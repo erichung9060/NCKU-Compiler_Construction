@@ -1,0 +1,39 @@
+> Create symbol table (scope level 0)
+func: main
+> Insert `main` (addr: -1) to scope level 0
+> Create symbol table (scope level 1)
+INT_LIT 0
+> Insert `x` (addr: 0) to scope level 1
+FLOAT_LIT 1.000000
+> Insert `z` (addr: 1) to scope level 1
+INT_LIT 3
+ASSIGN
+error:5: cannot borrow immutable borrowed content `x` as mutable
+INT_LIT 8
+error:6: undefined: y
+IDENT (name=x, address=0)
+IDENT (name=z, address=1)
+error:7: invalid operation: LSHIFT (mismatched types i32 and f32)
+LSHIFT
+ASSIGN
+error:7: cannot borrow immutable borrowed content `x` as mutable
+error:9: undefined: gg
+INT_LIT 0
+error:9: invalid operation: GTR (mismatched types undefined and i32)
+GTR
+> Create symbol table (scope level 2)
+STRING_LIT "gg"
+PRINTLN str
+
+> Dump symbol table (scope level: 2)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+
+> Dump symbol table (scope level: 1)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+0         x         0         i32       0         2         -         
+1         z         0         f32       1         4         -         
+
+> Dump symbol table (scope level: 0)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+0         main      -1        func      -1        1         (V)V      
+Total lines: 12

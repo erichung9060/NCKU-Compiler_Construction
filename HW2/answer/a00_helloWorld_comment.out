@@ -1,0 +1,14 @@
+> Create symbol table (scope level 0)
+func: main
+> Insert `main` (addr: -1) to scope level 0
+> Create symbol table (scope level 1)
+STRING_LIT "Hello World!"
+PRINTLN str
+
+> Dump symbol table (scope level: 1)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+
+> Dump symbol table (scope level: 0)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+0         main      -1        func      -1        1         (V)V      
+Total lines: 6

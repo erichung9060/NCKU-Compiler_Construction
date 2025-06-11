@@ -1,0 +1,84 @@
+> Create symbol table (scope level 0)
+func: main
+> Insert `main` (addr: -1) to scope level 0
+> Create symbol table (scope level 1)
+INT_LIT 0
+> Insert `x` (addr: 0) to scope level 1
+IDENT (name=x, address=0)
+PRINTLN i32
+INT_LIT 10
+ASSIGN
+IDENT (name=x, address=0)
+PRINTLN i32
+INT_LIT 2
+ADD_ASSIGN
+IDENT (name=x, address=0)
+PRINTLN i32
+INT_LIT 3
+SUB_ASSIGN
+IDENT (name=x, address=0)
+PRINTLN i32
+INT_LIT 4
+MUL_ASSIGN
+IDENT (name=x, address=0)
+PRINTLN i32
+INT_LIT 5
+DIV_ASSIGN
+IDENT (name=x, address=0)
+PRINTLN i32
+INT_LIT 6
+REM_ASSIGN
+IDENT (name=x, address=0)
+PRINTLN i32
+FLOAT_LIT 3.140000
+> Insert `yy` (addr: 1) to scope level 1
+IDENT (name=yy, address=1)
+PRINTLN f32
+FLOAT_LIT 10.400000
+ASSIGN
+IDENT (name=yy, address=1)
+PRINTLN f32
+FLOAT_LIT 2.000000
+ADD_ASSIGN
+IDENT (name=yy, address=1)
+PRINTLN f32
+FLOAT_LIT 3.000000
+SUB_ASSIGN
+IDENT (name=yy, address=1)
+PRINTLN f32
+FLOAT_LIT 4.000000
+MUL_ASSIGN
+IDENT (name=yy, address=1)
+PRINTLN f32
+FLOAT_LIT 5.000000
+DIV_ASSIGN
+IDENT (name=yy, address=1)
+PRINTLN f32
+STRING_LIT ""
+> Insert `s` (addr: 2) to scope level 1
+IDENT (name=s, address=2)
+PRINTLN str
+STRING_LIT "Hello"
+ASSIGN
+IDENT (name=s, address=2)
+PRINTLN str
+bool FALSE
+> Insert `bbb` (addr: 3) to scope level 1
+IDENT (name=bbb, address=3)
+PRINTLN bool
+bool TRUE
+ASSIGN
+IDENT (name=bbb, address=3)
+PRINTLN bool
+
+> Dump symbol table (scope level: 1)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+0         x         1         i32       0         2         -         
+1         yy        1         f32       1         17        -         
+2         s         1         str       2         30        -         
+3         bbb       1         bool      3         35        -         
+
+> Dump symbol table (scope level: 0)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+0         main      -1        func      -1        1         (V)V      
+Total lines: 39

@@ -1,0 +1,60 @@
+> Create symbol table (scope level 0)
+func: main
+> Insert `main` (addr: -1) to scope level 0
+> Create symbol table (scope level 1)
+INT_LIT 3
+> Insert `x` (addr: 0) to scope level 1
+INT_LIT 2
+> Insert `y` (addr: 1) to scope level 1
+IDENT (name=x, address=0)
+IDENT (name=y, address=1)
+ADD
+PRINTLN i32
+IDENT (name=x, address=0)
+IDENT (name=y, address=1)
+SUB
+PRINTLN i32
+IDENT (name=x, address=0)
+IDENT (name=y, address=1)
+MUL
+PRINTLN i32
+IDENT (name=x, address=0)
+IDENT (name=y, address=1)
+DIV
+PRINTLN i32
+IDENT (name=x, address=0)
+IDENT (name=y, address=1)
+REM
+PRINTLN i32
+FLOAT_LIT 3.100000
+> Insert `xx` (addr: 2) to scope level 1
+FLOAT_LIT 2.100000
+> Insert `yy` (addr: 3) to scope level 1
+IDENT (name=xx, address=2)
+IDENT (name=yy, address=3)
+ADD
+PRINTLN f32
+IDENT (name=xx, address=2)
+IDENT (name=yy, address=3)
+SUB
+PRINTLN f32
+IDENT (name=xx, address=2)
+IDENT (name=yy, address=3)
+MUL
+PRINTLN f32
+IDENT (name=xx, address=2)
+IDENT (name=yy, address=3)
+DIV
+PRINTLN f32
+
+> Dump symbol table (scope level: 1)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+0         x         0         i32       0         2         -         
+1         y         0         i32       1         3         -         
+2         xx        0         f32       2         10        -         
+3         yy        0         f32       3         11        -         
+
+> Dump symbol table (scope level: 0)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+0         main      -1        func      -1        1         (V)V      
+Total lines: 16

@@ -1,0 +1,26 @@
+> Create symbol table (scope level 0)
+func: main
+> Insert `main` (addr: -1) to scope level 0
+> Create symbol table (scope level 1)
+INT_LIT 1
+> Insert `n` (addr: 0) to scope level 1
+IDENT (name=n, address=0)
+INT_LIT 101
+LSS
+> Create symbol table (scope level 2)
+IDENT (name=n, address=0)
+PRINTLN i32
+INT_LIT 1
+ADD_ASSIGN
+
+> Dump symbol table (scope level: 2)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+
+> Dump symbol table (scope level: 1)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+0         n         1         i32       0         3         -         
+
+> Dump symbol table (scope level: 0)
+Index     Name      Mut       Type      Addr      Lineno    Func_sig  
+0         main      -1        func      -1        1         (V)V      
+Total lines: 11
