@@ -1,0 +1,83 @@
+fn       	 FUNC
+main     	 IDENT
+(        	 LPAREN
+)        	 RPAREN
+{        	 LBRACE
+         	 NEWLINE
+let      	 LET
+a        	 IDENT
+:        	 COLON
+[        	 LBRACK
+i32      	 INT
+;        	 SEMICOLON
+5        	 INT_LIT
+]        	 RBRACK
+=        	 ASSIGN
+[        	 LBRACK
+10       	 INT_LIT
+,        	 COMMA
+20       	 INT_LIT
+,        	 COMMA
+30       	 INT_LIT
+,        	 COMMA
+40       	 INT_LIT
+,        	 COMMA
+50       	 INT_LIT
+]        	 RBRACK
+;        	 SEMICOLON
+         	 NEWLINE
+println  	 PRINTLN
+(        	 LPAREN
+a        	 IDENT
+[        	 LBRACK
+0        	 INT_LIT
+]        	 RBRACK
+)        	 RPAREN
+;        	 SEMICOLON
+// 10    	 COMMENT
+         	 NEWLINE
+println  	 PRINTLN
+(        	 LPAREN
+a        	 IDENT
+[        	 LBRACK
+1        	 INT_LIT
+]        	 RBRACK
+)        	 RPAREN
+;        	 SEMICOLON
+// 20    	 COMMENT
+         	 NEWLINE
+println  	 PRINTLN
+(        	 LPAREN
+a        	 IDENT
+[        	 LBRACK
+2        	 INT_LIT
+]        	 RBRACK
+)        	 RPAREN
+;        	 SEMICOLON
+// 30    	 COMMENT
+         	 NEWLINE
+println  	 PRINTLN
+(        	 LPAREN
+a        	 IDENT
+[        	 LBRACK
+3        	 INT_LIT
+]        	 RBRACK
+)        	 RPAREN
+;        	 SEMICOLON
+// 40    	 COMMENT
+         	 NEWLINE
+println  	 PRINTLN
+(        	 LPAREN
+a        	 IDENT
+[        	 LBRACK
+4        	 INT_LIT
+]        	 RBRACK
+)        	 RPAREN
+;        	 SEMICOLON
+// 50    	 COMMENT
+         	 NEWLINE
+}        	 RBRACE
+
+Finish scanning,
+total line: 8
+comment line: 5

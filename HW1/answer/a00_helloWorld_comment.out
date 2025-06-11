@@ -1,0 +1,26 @@
+fn       	 FUNC
+main     	 IDENT
+(        	 LPAREN
+)        	 RPAREN
+{        	 LBRACE
+// Your first μrust program 	 COMMENT
+         	 NEWLINE
+println  	 PRINTLN
+(        	 LPAREN
+"        	 QUOTA
+Hello World! 	 STRING_LIT
+"        	 QUOTA
+)        	 RPAREN
+;        	 SEMICOLON
+// equivalent to println!("Hello World!"); in rust 	 COMMENT
+         	 NEWLINE
+/* Hello 
+    World */       	 MUTI_LINE_COMMENT
+/*
+    */       	 MUTI_LINE_COMMENT
+         	 NEWLINE
+}        	 RBRACE
+
+Finish scanning,
+total line: 6
+comment line: 5

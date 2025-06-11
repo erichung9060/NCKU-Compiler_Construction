@@ -1,0 +1,35 @@
+fn       	 FUNC
+main     	 IDENT
+(        	 LPAREN
+)        	 RPAREN
+{        	 LBRACE
+         	 NEWLINE
+let      	 LET
+x        	 IDENT
+=        	 ASSIGN
+6.0      	 FLOAT_LIT
+;        	 SEMICOLON
+         	 NEWLINE
+let      	 LET
+y        	 IDENT
+=        	 ASSIGN
+true     	 TRUE
+;        	 SEMICOLON
+         	 NEWLINE
+println  	 PRINTLN
+(        	 LPAREN
+x        	 IDENT
+)        	 RPAREN
+;        	 SEMICOLON
+         	 NEWLINE
+println  	 PRINTLN
+(        	 LPAREN
+y        	 IDENT
+)        	 RPAREN
+;        	 SEMICOLON
+         	 NEWLINE
+}        	 RBRACE
+
+Finish scanning,
+total line: 6
+comment line: 0

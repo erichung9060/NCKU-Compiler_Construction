@@ -1,0 +1,44 @@
+fn       	 FUNC
+main     	 IDENT
+(        	 LPAREN
+)        	 RPAREN
+{        	 LBRACE
+         	 NEWLINE
+// A counter variable 	 COMMENT
+         	 NEWLINE
+let      	 LET
+mut      	 MUT
+n        	 IDENT
+=        	 ASSIGN
+1        	 INT_LIT
+;        	 SEMICOLON
+         	 NEWLINE
+         	 NEWLINE
+// Loop while `n` is less than 101 	 COMMENT
+         	 NEWLINE
+while    	 WHILE
+n        	 IDENT
+<        	 LSS
+101      	 INT_LIT
+{        	 LBRACE
+         	 NEWLINE
+println  	 PRINTLN
+(        	 LPAREN
+n        	 IDENT
+)        	 RPAREN
+;        	 SEMICOLON
+         	 NEWLINE
+// Increment counter 	 COMMENT
+         	 NEWLINE
+n        	 IDENT
++=       	 ADD_ASSIGN
+1        	 INT_LIT
+;        	 SEMICOLON
+         	 NEWLINE
+}        	 RBRACE
+         	 NEWLINE
+}        	 RBRACE
+
+Finish scanning,
+total line: 11
+comment line: 3
