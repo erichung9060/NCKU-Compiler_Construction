@@ -159,33 +159,21 @@ Statement
     }
     | ID '=' Expression ';' {
         printf("ASSIGN\n");
-        lookup_symbol($1);
-        printf("PRINTLN %s\n", $3);
     }
     | ID ADD_ASSIGN Expression ';' {
         printf("ADD_ASSIGN\n");
-        lookup_symbol($1);
-        printf("PRINTLN %s\n", $3);
     }
     | ID SUB_ASSIGN Expression ';' {
         printf("SUB_ASSIGN\n");
-        lookup_symbol($1);
-        printf("PRINTLN %s\n", $3);
     }
     | ID MUL_ASSIGN Expression ';' {
         printf("MUL_ASSIGN\n");
-        lookup_symbol($1);
-        printf("PRINTLN %s\n", $3);
     }
     | ID DIV_ASSIGN Expression ';' {
         printf("DIV_ASSIGN\n");
-        lookup_symbol($1);
-        printf("PRINTLN %s\n", $3);
     }
     | ID REM_ASSIGN Expression ';' {
         printf("REM_ASSIGN\n");
-        lookup_symbol($1);
-        printf("PRINTLN %s\n", $3);
     }
     | '{' { create_symbol(); } StatementList '}' { 
         dump_symbol(); 
@@ -317,6 +305,10 @@ PrimaryExpression
     }
     | '"' STRING_LIT '"' {
         printf("STRING_LIT \"%s\"\n", $2);
+        $$ = strdup("str");
+    }
+    | '"' '"' {
+        printf("STRING_LIT \"\"\n");
         $$ = strdup("str");
     }
     | TRUE {
