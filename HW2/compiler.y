@@ -187,7 +187,20 @@ Statement
         dump_symbol(); 
         scope_level--; 
     }
+    | IfStatement
     | NEWLINE
+;
+
+IfStatement
+    : IF Expression Block
+    | IF Expression Block ELSE Block
+;
+
+Block
+    : '{' { create_symbol(); } StatementList '}' { 
+        dump_symbol(); 
+        scope_level--; 
+    }
 ;
 
 Type
