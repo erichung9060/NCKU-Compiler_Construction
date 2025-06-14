@@ -23,12 +23,15 @@
     /* Symbol table function - you can add new functions if needed. */
     /* parameters and return type can be changed */
     static void create_symbol();
-    static void insert_symbol();
+    static void insert_symbol(char* name, char* type, char* func_sig);
     static void lookup_symbol();
     static void dump_symbol();
 
     /* Global variables */
     bool HAS_ERROR = false;
+    int scope_level = 0;
+    int symbol_index = 0;
+    int address_counter = -1;
 %}
 
 %error-verbose
@@ -53,16 +56,13 @@
 %token IF ELSE FOR WHILE LOOP
 %token PRINT PRINTLN
 %token FUNC RETURN BREAK
-%token ID ARROW AS IN DOTDOT RSHIFT LSHIFT
+%token ARROW AS IN DOTDOT RSHIFT LSHIFT
 
 /* Token with return, which need to sepcify type */
 %token <i_val> INT_LIT
 %token <f_val> FLOAT_LIT
 %token <s_val> STRING_LIT
-%token <s_val> IDENT
-
-/* Nonterminal with return, which need to sepcify type */
-%type <s_val> Type
+%token <s_val> ID
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -71,7 +71,7 @@
 %%
 
 Program
-    : GlobalStatementList
+    : { create_symbol(); } GlobalStatementList
 ;
 
 GlobalStatementList 
@@ -85,7 +85,30 @@ GlobalStatement
 ;
 
 FunctionDeclStmt
-    :
+    : FUNC ID '(' ')' { 
+        printf("func: %s\n", $2); 
+        insert_symbol($2, "func", "(V)V");
+        create_symbol(); 
+    } '{' StatementList '}' { 
+        dump_symbol(); 
+        scope_level--; 
+        dump_symbol(); 
+    }
+;
+
+StatementList
+    : StatementList Statement
+    | Statement
+    |
+;
+
+Statement
+    : PRINTLN '(' '"' STRING_LIT '"' ')' ';' {
+        printf("STRING_LIT \"%s\"\n", $4);
+        printf("PRINTLN str\n");
+    }
+    | NEWLINE
+;
 
 %%
 
@@ -107,20 +130,24 @@ int main(int argc, char *argv[])
 }
 
 static void create_symbol() {
-    printf("> Create symbol table (scope level %d)\n", 0);
+    printf("> Create symbol table (scope level %d)\n", scope_level);
+    scope_level++;
 }
 
-static void insert_symbol() {
-    printf("> Insert `%s` (addr: %d) to scope level %d\n", "XXX", 0, 0);
+static void insert_symbol(char* name, char* type, char* func_sig) {
+    printf("> Insert `%s` (addr: %d) to scope level %d\n", name, address_counter, scope_level-1);
 }
 
 static void lookup_symbol() {
 }
 
 static void dump_symbol() {
-    printf("\n> Dump symbol table (scope level: %d)\n", 0);
+    printf("\n> Dump symbol table (scope level: %d)\n", scope_level-1);
     printf("%-10s%-10s%-10s%-10s%-10s%-10s%-10s\n",
         "Index", "Name", "Mut","Type", "Addr", "Lineno", "Func_sig");
-    printf("%-10d%-10s%-10d%-10s%-10d%-10d%-10s\n",
-            0, "name", 0, "type", 0, 0, "func_sig");
+    if (scope_level == 1) {
+        // Global scope - show main function
+        printf("%-10d%-10s%-10d%-10s%-10d%-10d%-10s\n",
+                0, "main", -1, "func", -1, 1, "(V)V");
+    }
 }
