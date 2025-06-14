@@ -159,11 +159,35 @@ Statement
     | LET ID ':' Type ';' {
         insert_symbol($2, $4, "-", 0);
     }
+    | LET ID '=' Expression ';' {
+        // Type inference - assume type based on expression
+        if (strcmp($4, "i32") == 0) {
+            insert_symbol($2, "i32", "-", 0);
+        } else if (strcmp($4, "f32") == 0) {
+            insert_symbol($2, "f32", "-", 0);
+        } else if (strcmp($4, "bool") == 0) {
+            insert_symbol($2, "bool", "-", 0);
+        } else {
+            insert_symbol($2, "str", "-", 0);
+        }
+    }
     | LET MUT ID ':' Type '=' Expression ';' {
         insert_symbol($3, $5, "-", 1);
     }
     | LET MUT ID ':' Type ';' {
         insert_symbol($3, $5, "-", 1);
+    }
+    | LET MUT ID '=' Expression ';' {
+        // Type inference for mutable variables
+        if (strcmp($5, "i32") == 0) {
+            insert_symbol($3, "i32", "-", 1);
+        } else if (strcmp($5, "f32") == 0) {
+            insert_symbol($3, "f32", "-", 1);
+        } else if (strcmp($5, "bool") == 0) {
+            insert_symbol($3, "bool", "-", 1);
+        } else {
+            insert_symbol($3, "str", "-", 1);
+        }
     }
     | ID '=' Expression ';' {
         printf("ASSIGN\n");
@@ -188,12 +212,17 @@ Statement
         scope_level--; 
     }
     | IfStatement
+    | WhileStatement
     | NEWLINE
 ;
 
 IfStatement
     : IF Expression Block
     | IF Expression Block ELSE Block
+;
+
+WhileStatement
+    : WHILE Expression Block
 ;
 
 Block
@@ -209,6 +238,10 @@ Type
     | BOOL { $$ = strdup("bool"); }
     | STR { $$ = strdup("str"); }
     | '&' STR { $$ = strdup("str"); }
+    | '[' Type ';' INT_LIT ']' { 
+        printf("INT_LIT %d\n", $4);
+        $$ = strdup("array"); 
+    }
 ;
 
 Expression
@@ -358,9 +391,22 @@ PrimaryExpression
     | ID {
         $$ = lookup_symbol($1);
     }
+    | ID '[' Expression ']' {
+        lookup_symbol($1);
+        // Expression已經輸出了，所以數組索引的順序是正確的
+        $$ = strdup("array");
+    }
+    | '[' ArrayElements ']' {
+        $$ = strdup("array");
+    }
     | '(' Expression ')' {
         $$ = $2;
     }
+;
+
+ArrayElements
+    : ArrayElements ',' Expression
+    | Expression
 ;
 
 %%
