@@ -24,14 +24,29 @@
     /* parameters and return type can be changed */
     static void create_symbol();
     static void insert_symbol(char* name, char* type, char* func_sig);
-    static void lookup_symbol();
+    static char* lookup_symbol(char* name);
     static void dump_symbol();
+    
+    /* Symbol table structure */
+    typedef struct symbol {
+        int index;
+        char* name;
+        int mut;
+        char* type;
+        int addr;
+        int lineno;
+        char* func_sig;
+        struct symbol* next;
+    } Symbol;
+    
+    Symbol* symbol_table[10]; // Support up to 10 scope levels
+    int symbol_count[10];     // Count of symbols in each scope
 
     /* Global variables */
     bool HAS_ERROR = false;
     int scope_level = 0;
     int symbol_index = 0;
-    int address_counter = -1;
+    int address_counter = 0;
 %}
 
 %error-verbose
@@ -44,7 +59,10 @@
     int i_val;
     float f_val;
     char *s_val;
-    /* ... */
+    struct {
+        char *type;
+        int addr;
+    } symbol_info;
 }
 
 /* Token without return */
@@ -63,6 +81,11 @@
 %token <f_val> FLOAT_LIT
 %token <s_val> STRING_LIT
 %token <s_val> ID
+
+/* Nonterminal with return, which need to sepcify type */
+%type <s_val> Type
+%type <s_val> Expression
+%type <s_val> PrimaryExpression
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -107,7 +130,74 @@ Statement
         printf("STRING_LIT \"%s\"\n", $4);
         printf("PRINTLN str\n");
     }
+    | PRINTLN '(' Expression ')' ';' {
+        printf("PRINTLN %s\n", $3);
+    }
+    | LET ID ':' Type '=' Expression ';' {
+        insert_symbol($2, $4, "-");
+    }
     | NEWLINE
+;
+
+Type
+    : INT { $$ = strdup("i32"); }
+    | FLOAT { $$ = strdup("f32"); }
+    | BOOL { $$ = strdup("bool"); }
+    | STR { $$ = strdup("str"); }
+;
+
+Expression
+    : Expression '+' Expression {
+        printf("ADD\n");
+        if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
+            $$ = strdup("f32");
+        } else {
+            $$ = strdup("i32");
+        }
+    }
+    | Expression '-' Expression {
+        printf("SUB\n");
+        if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
+            $$ = strdup("f32");
+        } else {
+            $$ = strdup("i32");
+        }
+    }
+    | Expression '*' Expression {
+        printf("MUL\n");
+        if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
+            $$ = strdup("f32");
+        } else {
+            $$ = strdup("i32");
+        }
+    }
+    | Expression '/' Expression {
+        printf("DIV\n");
+        if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
+            $$ = strdup("f32");
+        } else {
+            $$ = strdup("i32");
+        }
+    }
+    | Expression '%' Expression {
+        printf("REM\n");
+        $$ = strdup("i32");
+    }
+    | PrimaryExpression { $$ = $1; }
+;
+
+PrimaryExpression
+    : INT_LIT {
+        printf("INT_LIT %d\n", $1);
+        $$ = strdup("i32");
+    }
+    | FLOAT_LIT {
+        printf("FLOAT_LIT %f\n", $1);
+        $$ = strdup("f32");
+    }
+    | ID {
+        $$ = lookup_symbol($1);
+    }
 ;
 
 %%
@@ -121,33 +211,81 @@ int main(int argc, char *argv[])
         yyin = stdin;
     }
 
-    yylineno = 0;
+    yylineno = 1;
     yyparse();
 
-	printf("Total lines: %d\n", yylineno);
+	printf("Total lines: %d\n", yylineno - 1);
     fclose(yyin);
     return 0;
 }
 
 static void create_symbol() {
     printf("> Create symbol table (scope level %d)\n", scope_level);
+    symbol_table[scope_level] = NULL;
+    symbol_count[scope_level] = 0;
     scope_level++;
 }
 
 static void insert_symbol(char* name, char* type, char* func_sig) {
-    printf("> Insert `%s` (addr: %d) to scope level %d\n", name, address_counter, scope_level-1);
+    int current_scope = scope_level - 1;
+    
+    Symbol* new_symbol = (Symbol*)malloc(sizeof(Symbol));
+    new_symbol->index = symbol_count[current_scope];
+    new_symbol->name = strdup(name);
+    new_symbol->mut = (strcmp(func_sig, "-") == 0) ? 0 : -1; // 0 for variables, -1 for functions
+    new_symbol->type = strdup(type);
+    new_symbol->lineno = yylineno;
+    new_symbol->func_sig = strdup(func_sig);
+    new_symbol->next = symbol_table[current_scope];
+    
+    if (strcmp(type, "func") == 0) {
+        new_symbol->addr = -1;
+        printf("> Insert `%s` (addr: %d) to scope level %d\n", name, -1, current_scope);
+    } else {
+        new_symbol->addr = address_counter++;
+        printf("> Insert `%s` (addr: %d) to scope level %d\n", name, new_symbol->addr, current_scope);
+    }
+    
+    symbol_table[current_scope] = new_symbol;
+    symbol_count[current_scope]++;
 }
 
-static void lookup_symbol() {
+static char* lookup_symbol(char* name) {
+    // Search from current scope to global scope
+    for (int i = scope_level - 1; i >= 0; i--) {
+        Symbol* current = symbol_table[i];
+        while (current) {
+            if (strcmp(current->name, name) == 0) {
+                printf("IDENT (name=%s, address=%d)\n", name, current->addr);
+                return strdup(current->type);
+            }
+            current = current->next;
+        }
+    }
+    printf("IDENT (name=%s, address=-1)\n", name); // Not found
+    return strdup("unknown");
 }
 
 static void dump_symbol() {
-    printf("\n> Dump symbol table (scope level: %d)\n", scope_level-1);
+    int current_scope = scope_level - 1;
+    printf("\n> Dump symbol table (scope level: %d)\n", current_scope);
     printf("%-10s%-10s%-10s%-10s%-10s%-10s%-10s\n",
         "Index", "Name", "Mut","Type", "Addr", "Lineno", "Func_sig");
-    if (scope_level == 1) {
-        // Global scope - show main function
+    
+    // Collect symbols in reverse order (to match expected output)
+    Symbol* symbols[100];
+    int count = 0;
+    Symbol* current = symbol_table[current_scope];
+    while (current) {
+        symbols[count++] = current;
+        current = current->next;
+    }
+    
+    // Print in reverse order
+    for (int i = count - 1; i >= 0; i--) {
+        Symbol* sym = symbols[i];
         printf("%-10d%-10s%-10d%-10s%-10d%-10d%-10s\n",
-                0, "main", -1, "func", -1, 1, "(V)V");
+                sym->index, sym->name, sym->mut, sym->type, 
+                sym->addr, sym->lineno, sym->func_sig);
     }
 }
