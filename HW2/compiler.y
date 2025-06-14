@@ -26,6 +26,7 @@
     static void insert_symbol(char* name, char* type, char* func_sig, int mut);
     static char* lookup_symbol(char* name);
     static void dump_symbol();
+    static int variable_exists(char* name);
     static void check_mutable(char* name);
     
     /* Symbol table structure */
@@ -192,7 +193,9 @@ Statement
         }
     }
     | ID '=' Expression ';' {
-        printf("ASSIGN\n");
+        if (variable_exists($1)) {
+            printf("ASSIGN\n");
+        }
         check_mutable($1);
     }
     | ID ADD_ASSIGN Expression ';' {
@@ -270,10 +273,10 @@ LogicalAndExpression
 
 RelationalExpression
     : RelationalExpression '>' AdditiveExpression {
-        printf("GTR\n");
         if (strcmp($1, "undefined") == 0 || strcmp($3, "undefined") == 0) {
             printf("error:%d: invalid operation: GTR (mismatched types %s and %s)\n", yylineno, $1, $3);
         }
+        printf("GTR\n");
         $$ = strdup("bool");
     }
     | RelationalExpression '<' AdditiveExpression {
@@ -341,14 +344,12 @@ MultiplicativeExpression
         $$ = strdup("i32");
     }
     | MultiplicativeExpression LSHIFT UnaryExpression {
-        printf("LSHIFT\n");
         // Type checking for left shift
-        if (strcmp($1, "i32") == 0 && strcmp($3, "i32") == 0) {
-            $$ = strdup("i32");
-        } else {
+        if (!(strcmp($1, "i32") == 0 && strcmp($3, "i32") == 0)) {
             printf("error:%d: invalid operation: LSHIFT (mismatched types %s and %s)\n", yylineno, $1, $3);
-            $$ = strdup("i32");
         }
+        printf("LSHIFT\n");
+        $$ = strdup("i32");
     }
     | MultiplicativeExpression RSHIFT UnaryExpression {
         printf("RSHIFT\n");
@@ -491,7 +492,6 @@ static char* lookup_symbol(char* name) {
         }
     }
     printf("error:%d: undefined: %s\n", yylineno, name);
-    printf("IDENT (name=%s, address=-1)\n", name); // Not found
     return strdup("undefined");
 }
 
@@ -519,6 +519,20 @@ static void dump_symbol() {
     }
 }
 
+static int variable_exists(char* name) {
+    // Search from current scope to global scope
+    for (int i = scope_level - 1; i >= 0; i--) {
+        Symbol* current = symbol_table[i];
+        while (current) {
+            if (strcmp(current->name, name) == 0) {
+                return 1; // Found
+            }
+            current = current->next;
+        }
+    }
+    return 0; // Not found
+}
+
 static void check_mutable(char* name) {
     // Search from current scope to global scope
     for (int i = scope_level - 1; i >= 0; i--) {
@@ -533,4 +547,6 @@ static void check_mutable(char* name) {
             current = current->next;
         }
     }
+    // If we reach here, the variable is undefined
+    printf("error:%d: undefined: %s\n", yylineno, name);
 }
