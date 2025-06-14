@@ -23,7 +23,7 @@
     /* Symbol table function - you can add new functions if needed. */
     /* parameters and return type can be changed */
     static void create_symbol();
-    static void insert_symbol(char* name, char* type, char* func_sig);
+    static void insert_symbol(char* name, char* type, char* func_sig, int mut);
     static char* lookup_symbol(char* name);
     static void dump_symbol();
     
@@ -125,7 +125,7 @@ GlobalStatement
 FunctionDeclStmt
     : FUNC ID '(' ')' { 
         printf("func: %s\n", $2); 
-        insert_symbol($2, "func", "(V)V");
+        insert_symbol($2, "func", "(V)V", -1);
         create_symbol(); 
     } '{' StatementList '}' { 
         dump_symbol(); 
@@ -152,7 +152,44 @@ Statement
         printf("PRINT %s\n", $3);
     }
     | LET ID ':' Type '=' Expression ';' {
-        insert_symbol($2, $4, "-");
+        insert_symbol($2, $4, "-", 0);
+    }
+    | LET MUT ID ':' Type '=' Expression ';' {
+        insert_symbol($3, $5, "-", 1);
+    }
+    | ID '=' Expression ';' {
+        printf("ASSIGN\n");
+        lookup_symbol($1);
+        printf("PRINTLN %s\n", $3);
+    }
+    | ID ADD_ASSIGN Expression ';' {
+        printf("ADD_ASSIGN\n");
+        lookup_symbol($1);
+        printf("PRINTLN %s\n", $3);
+    }
+    | ID SUB_ASSIGN Expression ';' {
+        printf("SUB_ASSIGN\n");
+        lookup_symbol($1);
+        printf("PRINTLN %s\n", $3);
+    }
+    | ID MUL_ASSIGN Expression ';' {
+        printf("MUL_ASSIGN\n");
+        lookup_symbol($1);
+        printf("PRINTLN %s\n", $3);
+    }
+    | ID DIV_ASSIGN Expression ';' {
+        printf("DIV_ASSIGN\n");
+        lookup_symbol($1);
+        printf("PRINTLN %s\n", $3);
+    }
+    | ID REM_ASSIGN Expression ';' {
+        printf("REM_ASSIGN\n");
+        lookup_symbol($1);
+        printf("PRINTLN %s\n", $3);
+    }
+    | '{' { create_symbol(); } StatementList '}' { 
+        dump_symbol(); 
+        scope_level--; 
     }
     | NEWLINE
 ;
@@ -162,6 +199,7 @@ Type
     | FLOAT { $$ = strdup("f32"); }
     | BOOL { $$ = strdup("bool"); }
     | STR { $$ = strdup("str"); }
+    | '&' STR { $$ = strdup("str"); }
 ;
 
 Expression
@@ -277,6 +315,10 @@ PrimaryExpression
         printf("FLOAT_LIT %f\n", $1);
         $$ = strdup("f32");
     }
+    | '"' STRING_LIT '"' {
+        printf("STRING_LIT \"%s\"\n", $2);
+        $$ = strdup("str");
+    }
     | TRUE {
         printf("bool TRUE\n");
         $$ = strdup("bool");
@@ -319,13 +361,13 @@ static void create_symbol() {
     scope_level++;
 }
 
-static void insert_symbol(char* name, char* type, char* func_sig) {
+static void insert_symbol(char* name, char* type, char* func_sig, int mut) {
     int current_scope = scope_level - 1;
     
     Symbol* new_symbol = (Symbol*)malloc(sizeof(Symbol));
     new_symbol->index = symbol_count[current_scope];
     new_symbol->name = strdup(name);
-    new_symbol->mut = (strcmp(func_sig, "-") == 0) ? 0 : -1; // 0 for variables, -1 for functions
+    new_symbol->mut = mut;
     new_symbol->type = strdup(type);
     new_symbol->lineno = yylineno;
     new_symbol->func_sig = strdup(func_sig);
