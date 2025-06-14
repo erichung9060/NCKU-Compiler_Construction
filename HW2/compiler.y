@@ -85,7 +85,22 @@
 /* Nonterminal with return, which need to sepcify type */
 %type <s_val> Type
 %type <s_val> Expression
+%type <s_val> LogicalOrExpression
+%type <s_val> LogicalAndExpression
+%type <s_val> RelationalExpression
+%type <s_val> AdditiveExpression
+%type <s_val> MultiplicativeExpression
+%type <s_val> UnaryExpression
 %type <s_val> PrimaryExpression
+
+/* Operator precedence and associativity */
+%left LOR
+%left LAND
+%left '>' '<' GEQ LEQ EQL NEQ
+%left '+' '-'
+%left '*' '/' '%'
+%right '!' NEG
+%left '(' ')'
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -133,6 +148,9 @@ Statement
     | PRINTLN '(' Expression ')' ';' {
         printf("PRINTLN %s\n", $3);
     }
+    | PRINT '(' Expression ')' ';' {
+        printf("PRINT %s\n", $3);
+    }
     | LET ID ':' Type '=' Expression ';' {
         insert_symbol($2, $4, "-");
     }
@@ -147,7 +165,55 @@ Type
 ;
 
 Expression
-    : Expression '+' Expression {
+    : LogicalOrExpression { $$ = $1; }
+;
+
+LogicalOrExpression
+    : LogicalOrExpression LOR LogicalAndExpression {
+        printf("LOR\n");
+        $$ = strdup("bool");
+    }
+    | LogicalAndExpression { $$ = $1; }
+;
+
+LogicalAndExpression
+    : LogicalAndExpression LAND RelationalExpression {
+        printf("LAND\n");
+        $$ = strdup("bool");
+    }
+    | RelationalExpression { $$ = $1; }
+;
+
+RelationalExpression
+    : RelationalExpression '>' AdditiveExpression {
+        printf("GTR\n");
+        $$ = strdup("bool");
+    }
+    | RelationalExpression '<' AdditiveExpression {
+        printf("LSS\n");
+        $$ = strdup("bool");
+    }
+    | RelationalExpression GEQ AdditiveExpression {
+        printf("GEQ\n");
+        $$ = strdup("bool");
+    }
+    | RelationalExpression LEQ AdditiveExpression {
+        printf("LEQ\n");
+        $$ = strdup("bool");
+    }
+    | RelationalExpression EQL AdditiveExpression {
+        printf("EQL\n");
+        $$ = strdup("bool");
+    }
+    | RelationalExpression NEQ AdditiveExpression {
+        printf("NEQ\n");
+        $$ = strdup("bool");
+    }
+    | AdditiveExpression { $$ = $1; }
+;
+
+AdditiveExpression
+    : AdditiveExpression '+' MultiplicativeExpression {
         printf("ADD\n");
         if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
             $$ = strdup("f32");
@@ -155,7 +221,7 @@ Expression
             $$ = strdup("i32");
         }
     }
-    | Expression '-' Expression {
+    | AdditiveExpression '-' MultiplicativeExpression {
         printf("SUB\n");
         if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
             $$ = strdup("f32");
@@ -163,7 +229,11 @@ Expression
             $$ = strdup("i32");
         }
     }
-    | Expression '*' Expression {
+    | MultiplicativeExpression { $$ = $1; }
+;
+
+MultiplicativeExpression
+    : MultiplicativeExpression '*' UnaryExpression {
         printf("MUL\n");
         if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
             $$ = strdup("f32");
@@ -171,7 +241,7 @@ Expression
             $$ = strdup("i32");
         }
     }
-    | Expression '/' Expression {
+    | MultiplicativeExpression '/' UnaryExpression {
         printf("DIV\n");
         if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
             $$ = strdup("f32");
@@ -179,9 +249,21 @@ Expression
             $$ = strdup("i32");
         }
     }
-    | Expression '%' Expression {
+    | MultiplicativeExpression '%' UnaryExpression {
         printf("REM\n");
         $$ = strdup("i32");
+    }
+    | UnaryExpression { $$ = $1; }
+;
+
+UnaryExpression
+    : '!' UnaryExpression {
+        printf("NOT\n");
+        $$ = strdup("bool");
+    }
+    | '-' UnaryExpression %prec NEG {
+        printf("NEG\n");
+        $$ = $2;
     }
     | PrimaryExpression { $$ = $1; }
 ;
@@ -195,8 +277,19 @@ PrimaryExpression
         printf("FLOAT_LIT %f\n", $1);
         $$ = strdup("f32");
     }
+    | TRUE {
+        printf("bool TRUE\n");
+        $$ = strdup("bool");
+    }
+    | FALSE {
+        printf("bool FALSE\n");
+        $$ = strdup("bool");
+    }
     | ID {
         $$ = lookup_symbol($1);
+    }
+    | '(' Expression ')' {
+        $$ = $2;
     }
 ;
 
