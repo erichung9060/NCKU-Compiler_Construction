@@ -26,6 +26,7 @@
     static void insert_symbol(char* name, char* type, char* func_sig, int mut);
     static char* lookup_symbol(char* name);
     static void dump_symbol();
+    static void check_mutable(char* name);
     
     /* Symbol table structure */
     typedef struct symbol {
@@ -100,6 +101,7 @@
 %left '>' '<' GEQ LEQ EQL NEQ
 %left '+' '-'
 %left '*' '/' '%'
+%left LSHIFT RSHIFT
 %left AS
 %right '!' NEG
 %left '(' ')'
@@ -191,9 +193,11 @@ Statement
     }
     | ID '=' Expression ';' {
         printf("ASSIGN\n");
+        check_mutable($1);
     }
     | ID ADD_ASSIGN Expression ';' {
         printf("ADD_ASSIGN\n");
+        check_mutable($1);
     }
     | ID SUB_ASSIGN Expression ';' {
         printf("SUB_ASSIGN\n");
@@ -267,6 +271,9 @@ LogicalAndExpression
 RelationalExpression
     : RelationalExpression '>' AdditiveExpression {
         printf("GTR\n");
+        if (strcmp($1, "undefined") == 0 || strcmp($3, "undefined") == 0) {
+            printf("error:%d: invalid operation: GTR (mismatched types %s and %s)\n", yylineno, $1, $3);
+        }
         $$ = strdup("bool");
     }
     | RelationalExpression '<' AdditiveExpression {
@@ -333,6 +340,20 @@ MultiplicativeExpression
         printf("REM\n");
         $$ = strdup("i32");
     }
+    | MultiplicativeExpression LSHIFT UnaryExpression {
+        printf("LSHIFT\n");
+        // Type checking for left shift
+        if (strcmp($1, "i32") == 0 && strcmp($3, "i32") == 0) {
+            $$ = strdup("i32");
+        } else {
+            printf("error:%d: invalid operation: LSHIFT (mismatched types %s and %s)\n", yylineno, $1, $3);
+            $$ = strdup("i32");
+        }
+    }
+    | MultiplicativeExpression RSHIFT UnaryExpression {
+        printf("RSHIFT\n");
+        $$ = strdup("i32");
+    }
     | UnaryExpression { $$ = $1; }
 ;
 
@@ -391,9 +412,7 @@ PrimaryExpression
     | ID {
         $$ = lookup_symbol($1);
     }
-    | ID '[' Expression ']' {
-        lookup_symbol($1);
-        // Expression已經輸出了，所以數組索引的順序是正確的
+    | ID { lookup_symbol($1); } '[' Expression ']' {
         $$ = strdup("array");
     }
     | '[' ArrayElements ']' {
@@ -471,8 +490,9 @@ static char* lookup_symbol(char* name) {
             current = current->next;
         }
     }
+    printf("error:%d: undefined: %s\n", yylineno, name);
     printf("IDENT (name=%s, address=-1)\n", name); // Not found
-    return strdup("unknown");
+    return strdup("undefined");
 }
 
 static void dump_symbol() {
@@ -496,5 +516,21 @@ static void dump_symbol() {
         printf("%-10d%-10s%-10d%-10s%-10d%-10d%-10s\n",
                 sym->index, sym->name, sym->mut, sym->type, 
                 sym->addr, sym->lineno, sym->func_sig);
+    }
+}
+
+static void check_mutable(char* name) {
+    // Search from current scope to global scope
+    for (int i = scope_level - 1; i >= 0; i--) {
+        Symbol* current = symbol_table[i];
+        while (current) {
+            if (strcmp(current->name, name) == 0) {
+                if (current->mut == 0) {
+                    printf("error:%d: cannot borrow immutable borrowed content `%s` as mutable\n", yylineno, name);
+                }
+                return;
+            }
+            current = current->next;
+        }
     }
 }
