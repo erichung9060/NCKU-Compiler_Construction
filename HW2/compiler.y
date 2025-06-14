@@ -85,6 +85,7 @@
 /* Nonterminal with return, which need to sepcify type */
 %type <s_val> Type
 %type <s_val> Expression
+%type <s_val> CastExpression
 %type <s_val> LogicalOrExpression
 %type <s_val> LogicalAndExpression
 %type <s_val> RelationalExpression
@@ -99,6 +100,7 @@
 %left '>' '<' GEQ LEQ EQL NEQ
 %left '+' '-'
 %left '*' '/' '%'
+%left AS
 %right '!' NEG
 %left '(' ')'
 
@@ -154,7 +156,13 @@ Statement
     | LET ID ':' Type '=' Expression ';' {
         insert_symbol($2, $4, "-", 0);
     }
+    | LET ID ':' Type ';' {
+        insert_symbol($2, $4, "-", 0);
+    }
     | LET MUT ID ':' Type '=' Expression ';' {
+        insert_symbol($3, $5, "-", 1);
+    }
+    | LET MUT ID ':' Type ';' {
         insert_symbol($3, $5, "-", 1);
     }
     | ID '=' Expression ';' {
@@ -290,6 +298,21 @@ UnaryExpression
     | '-' UnaryExpression %prec NEG {
         printf("NEG\n");
         $$ = $2;
+    }
+    | CastExpression { $$ = $1; }
+;
+
+CastExpression
+    : CastExpression AS Type {
+        if (strcmp($1, "i32") == 0 && strcmp($3, "f32") == 0) {
+            printf("i2f\n");
+            $$ = strdup("f32");
+        } else if (strcmp($1, "f32") == 0 && strcmp($3, "i32") == 0) {
+            printf("f2i\n");
+            $$ = strdup("i32");
+        } else {
+            $$ = strdup($3);
+        }
     }
     | PrimaryExpression { $$ = $1; }
 ;
