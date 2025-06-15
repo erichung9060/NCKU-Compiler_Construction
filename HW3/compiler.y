@@ -476,15 +476,37 @@ RelationalExpression
 AdditiveExpression
     : AdditiveExpression '+' MultiplicativeExpression {
         char *type = (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) ? "f32" : "i32";
-        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 64);
-        sprintf(code, "%s%s    %sadd\n", $1.code, $3.code, strcmp(type, "f32") == 0 ? "f" : "i");
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        if (strcmp(type, "f32") == 0) {
+            // If result is float, convert operands if necessary
+            if (strcmp($1.type, "i32") == 0 && strcmp($3.type, "f32") == 0) {
+                sprintf(code, "%s    i2f\n%s    fadd\n", $1.code, $3.code);
+            } else if (strcmp($1.type, "f32") == 0 && strcmp($3.type, "i32") == 0) {
+                sprintf(code, "%s%s    i2f\n    fadd\n", $1.code, $3.code);
+            } else {
+                sprintf(code, "%s%s    fadd\n", $1.code, $3.code);
+            }
+        } else {
+            sprintf(code, "%s%s    iadd\n", $1.code, $3.code);
+        }
         $$.type = strdup(type);
         $$.code = code;
     }
     | AdditiveExpression '-' MultiplicativeExpression {
         char *type = (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) ? "f32" : "i32";
-        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 64);
-        sprintf(code, "%s%s    %ssub\n", $1.code, $3.code, strcmp(type, "f32") == 0 ? "f" : "i");
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        if (strcmp(type, "f32") == 0) {
+            // If result is float, convert operands if necessary
+            if (strcmp($1.type, "i32") == 0 && strcmp($3.type, "f32") == 0) {
+                sprintf(code, "%s    i2f\n%s    fsub\n", $1.code, $3.code);
+            } else if (strcmp($1.type, "f32") == 0 && strcmp($3.type, "i32") == 0) {
+                sprintf(code, "%s%s    i2f\n    fsub\n", $1.code, $3.code);
+            } else {
+                sprintf(code, "%s%s    fsub\n", $1.code, $3.code);
+            }
+        } else {
+            sprintf(code, "%s%s    isub\n", $1.code, $3.code);
+        }
         $$.type = strdup(type);
         $$.code = code;
     }
@@ -494,15 +516,37 @@ AdditiveExpression
 MultiplicativeExpression
     : MultiplicativeExpression '*' UnaryExpression {
         char *type = (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) ? "f32" : "i32";
-        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 64);
-        sprintf(code, "%s%s    %smul\n", $1.code, $3.code, strcmp(type, "f32") == 0 ? "f" : "i");
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        if (strcmp(type, "f32") == 0) {
+            // If result is float, convert operands if necessary
+            if (strcmp($1.type, "i32") == 0 && strcmp($3.type, "f32") == 0) {
+                sprintf(code, "%s    i2f\n%s    fmul\n", $1.code, $3.code);
+            } else if (strcmp($1.type, "f32") == 0 && strcmp($3.type, "i32") == 0) {
+                sprintf(code, "%s%s    i2f\n    fmul\n", $1.code, $3.code);
+            } else {
+                sprintf(code, "%s%s    fmul\n", $1.code, $3.code);
+            }
+        } else {
+            sprintf(code, "%s%s    imul\n", $1.code, $3.code);
+        }
         $$.type = strdup(type);
         $$.code = code;
     }
     | MultiplicativeExpression '/' UnaryExpression {
         char *type = (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) ? "f32" : "i32";
-        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 64);
-        sprintf(code, "%s%s    %sdiv\n", $1.code, $3.code, strcmp(type, "f32") == 0 ? "f" : "i");
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        if (strcmp(type, "f32") == 0) {
+            // If result is float, convert operands if necessary
+            if (strcmp($1.type, "i32") == 0 && strcmp($3.type, "f32") == 0) {
+                sprintf(code, "%s    i2f\n%s    fdiv\n", $1.code, $3.code);
+            } else if (strcmp($1.type, "f32") == 0 && strcmp($3.type, "i32") == 0) {
+                sprintf(code, "%s%s    i2f\n    fdiv\n", $1.code, $3.code);
+            } else {
+                sprintf(code, "%s%s    fdiv\n", $1.code, $3.code);
+            }
+        } else {
+            sprintf(code, "%s%s    idiv\n", $1.code, $3.code);
+        }
         $$.type = strdup(type);
         $$.code = code;
     }
@@ -537,12 +581,18 @@ UnaryExpression
 
 CastExpression
     : CastExpression AS Type {
+        char *code = (char*)malloc(strlen($1.code) + 64);
         if (strcmp($1.type, "i32") == 0 && strcmp($3.type, "f32") == 0) {
-            $$.type = strdup("f32"); $$.code = strdup("");
+            sprintf(code, "%s    i2f\n", $1.code);
+            $$.type = strdup("f32"); 
+            $$.code = code;
         } else if (strcmp($1.type, "f32") == 0 && strcmp($3.type, "i32") == 0) {
-            $$.type = strdup("i32"); $$.code = strdup("");
+            sprintf(code, "%s    f2i\n", $1.code);
+            $$.type = strdup("i32"); 
+            $$.code = code;
         } else {
-            $$.type = strdup($3.type); $$.code = strdup("");
+            $$.type = strdup($3.type); 
+            $$.code = strdup($1.code);
         }
     }
     | PrimaryExpression { $$.type = $1.type; $$.code = $1.code; }
