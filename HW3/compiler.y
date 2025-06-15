@@ -52,6 +52,8 @@
     int symbol_index = 0;
     int address_counter = 0;
     int label_counter = 0;
+    int if_label_stack[100]; // Stack to track if statement labels
+    int if_label_top = -1;
 
     FILE *jout = NULL;
 %}
@@ -115,6 +117,10 @@
 %left AS
 %right '!' NEG
 %left '(' ')'
+
+/* Handle dangling else */
+%nonassoc IFX
+%nonassoc ELSE
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -343,8 +349,34 @@ Statement
 ;
 
 IfStatement
-    : IF Expression Block
-    | IF Expression Block ELSE Block
+    : IF Expression {
+        // Store expression and generate conditional jump
+        int else_label = ++label_counter;
+        int end_label = ++label_counter;
+        if_label_stack[++if_label_top] = else_label;
+        if_label_stack[++if_label_top] = end_label;
+        fprintf(jout, "%s    ifeq L%d\n", $2.code, else_label);
+    } Block ElsePart {
+        // Generate final end label
+        int end_label = if_label_stack[if_label_top--];
+        fprintf(jout, "L%d:\n", end_label);
+    }
+;
+
+ElsePart
+    : ELSE {
+        // Generate jump to end and else label
+        int end_label = if_label_stack[if_label_top];
+        int else_label = if_label_stack[if_label_top-1];
+        fprintf(jout, "    goto L%d\nL%d:\n", end_label, else_label);
+    } Block
+    | /* empty */ {
+        // No else part - just generate the else label (which becomes the end)
+        int end_label = if_label_stack[if_label_top];
+        int else_label = if_label_stack[if_label_top-1];
+        if_label_stack[if_label_top-1] = end_label; // Reuse end label as else label
+        fprintf(jout, "L%d:\n", else_label);
+    }
 ;
 
 WhileStatement
