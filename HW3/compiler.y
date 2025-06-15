@@ -20,11 +20,13 @@
     extern int yylex();
     extern FILE *yyin;
 
+    typedef struct { char* type; int addr; } SymbolInfo;
+
     /* Symbol table function - you can add new functions if needed. */
     /* parameters and return type can be changed */
     static void create_symbol();
     static void insert_symbol(char* name, char* type, char* func_sig, int mut);
-    static char* lookup_symbol(char* name);
+    static SymbolInfo lookup_symbol_info(char* name);
     static void dump_symbol();
     static int variable_exists(char* name);
     static void check_mutable(char* name);
@@ -64,6 +66,10 @@
     float f_val;
     char *s_val;
     struct {
+        char *type; // "i32" or "f32"
+        char *code; // codegen string
+    } expr;
+    struct {
         char *type;
         int addr;
     } symbol_info;
@@ -87,16 +93,16 @@
 %token <s_val> ID
 
 /* Nonterminal with return, which need to sepcify type */
-%type <s_val> Type
-%type <s_val> Expression
-%type <s_val> CastExpression
-%type <s_val> LogicalOrExpression
-%type <s_val> LogicalAndExpression
-%type <s_val> RelationalExpression
-%type <s_val> AdditiveExpression
-%type <s_val> MultiplicativeExpression
-%type <s_val> UnaryExpression
-%type <s_val> PrimaryExpression
+%type <expr> Type
+%type <expr> Expression
+%type <expr> CastExpression
+%type <expr> LogicalOrExpression
+%type <expr> LogicalAndExpression
+%type <expr> RelationalExpression
+%type <expr> AdditiveExpression
+%type <expr> MultiplicativeExpression
+%type <expr> UnaryExpression
+%type <expr> PrimaryExpression
 
 /* Operator precedence and associativity */
 %left LOR
@@ -155,50 +161,83 @@ Statement
         fprintf(jout, "    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
     }
     | PRINTLN '(' Expression ')' ';' {
-        printf("PRINTLN %s\n", $3);
+        // 根據型別產生對應 print 指令
+        fprintf(jout, "    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+        fprintf(jout, "%s", $3.code);
+        if (strcmp($3.type, "i32") == 0) {
+            fprintf(jout, "    invokevirtual java/io/PrintStream/println(I)V\n");
+        } else if (strcmp($3.type, "f32") == 0) {
+            fprintf(jout, "    invokevirtual java/io/PrintStream/println(F)V\n");
+        }
     }
     | PRINT '(' Expression ')' ';' {
         printf("PRINT %s\n", $3);
     }
     | LET ID ':' Type '=' Expression ';' {
-        insert_symbol($2, $4, "-", 0);
+        insert_symbol($2, $4.type, "-", 0);
+        int addr = lookup_symbol_info($2).addr;
+        if (strcmp($4.type, "i32") == 0) {
+            fprintf(jout, "%s    istore %d\n", $6.code, addr);
+        } else if (strcmp($4.type, "f32") == 0) {
+            fprintf(jout, "%s    fstore %d\n", $6.code, addr);
+        }
     }
     | LET ID ':' Type ';' {
-        insert_symbol($2, $4, "-", 0);
+        insert_symbol($2, $4.type, "-", 0);
+        int addr = lookup_symbol_info($2).addr;
+        if (strcmp($4.type, "i32") == 0) {
+            fprintf(jout, "    ldc 0\n    istore %d\n", addr);
+        } else if (strcmp($4.type, "f32") == 0) {
+            fprintf(jout, "    ldc 0.0\n    fstore %d\n", addr);
+        }
     }
     | LET ID '=' Expression ';' {
-        // Type inference - assume type based on expression
-        if (strcmp($4, "i32") == 0) {
-            insert_symbol($2, "i32", "-", 0);
-        } else if (strcmp($4, "f32") == 0) {
-            insert_symbol($2, "f32", "-", 0);
-        } else if (strcmp($4, "bool") == 0) {
-            insert_symbol($2, "bool", "-", 0);
-        } else {
-            insert_symbol($2, "str", "-", 0);
+        char* type = $4.type;
+        insert_symbol($2, type, "-", 0);
+        int addr = lookup_symbol_info($2).addr;
+        if (strcmp(type, "i32") == 0) {
+            fprintf(jout, "%s    istore %d\n", $4.code, addr);
+        } else if (strcmp(type, "f32") == 0) {
+            fprintf(jout, "%s    fstore %d\n", $4.code, addr);
         }
     }
     | LET MUT ID ':' Type '=' Expression ';' {
-        insert_symbol($3, $5, "-", 1);
+        insert_symbol($3, $5.type, "-", 1);
+        int addr = lookup_symbol_info($3).addr;
+        if (strcmp($5.type, "i32") == 0) {
+            fprintf(jout, "%s    istore %d\n", $7.code, addr);
+        } else if (strcmp($5.type, "f32") == 0) {
+            fprintf(jout, "%s    fstore %d\n", $7.code, addr);
+        }
     }
     | LET MUT ID ':' Type ';' {
-        insert_symbol($3, $5, "-", 1);
+        insert_symbol($3, $5.type, "-", 1);
+        int addr = lookup_symbol_info($3).addr;
+        if (strcmp($5.type, "i32") == 0) {
+            fprintf(jout, "    ldc 0\n    istore %d\n", addr);
+        } else if (strcmp($5.type, "f32") == 0) {
+            fprintf(jout, "    ldc 0.0\n    fstore %d\n", addr);
+        }
     }
     | LET MUT ID '=' Expression ';' {
-        // Type inference for mutable variables
-        if (strcmp($5, "i32") == 0) {
-            insert_symbol($3, "i32", "-", 1);
-        } else if (strcmp($5, "f32") == 0) {
-            insert_symbol($3, "f32", "-", 1);
-        } else if (strcmp($5, "bool") == 0) {
-            insert_symbol($3, "bool", "-", 1);
-        } else {
-            insert_symbol($3, "str", "-", 1);
+        char* type = $5.type;
+        insert_symbol($3, type, "-", 1);
+        int addr = lookup_symbol_info($3).addr;
+        if (strcmp(type, "i32") == 0) {
+            fprintf(jout, "%s    istore %d\n", $5.code, addr);
+        } else if (strcmp(type, "f32") == 0) {
+            fprintf(jout, "%s    fstore %d\n", $5.code, addr);
         }
     }
     | ID '=' Expression ';' {
         if (variable_exists($1)) {
-            printf("ASSIGN\n");
+            int addr = lookup_symbol_info($1).addr;
+            char* type = lookup_symbol_info($1).type;
+            if (strcmp(type, "i32") == 0) {
+                fprintf(jout, "%s    istore %d\n", $3.code, addr);
+            } else if (strcmp(type, "f32") == 0) {
+                fprintf(jout, "%s    fstore %d\n", $3.code, addr);
+            }
         }
         check_mutable($1);
     }
@@ -244,15 +283,12 @@ Block
 ;
 
 Type
-    : INT { $$ = strdup("i32"); }
-    | FLOAT { $$ = strdup("f32"); }
-    | BOOL { $$ = strdup("bool"); }
-    | STR { $$ = strdup("str"); }
-    | '&' STR { $$ = strdup("str"); }
-    | '[' Type ';' INT_LIT ']' { 
-        printf("INT_LIT %d\n", $4);
-        $$ = strdup("array"); 
-    }
+    : INT { $$.type = strdup("i32"); $$.code = strdup(""); }
+    | FLOAT { $$.type = strdup("f32"); $$.code = strdup(""); }
+    | BOOL { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | STR { $$.type = strdup("str"); $$.code = strdup(""); }
+    | '&' STR { $$.type = strdup("str"); $$.code = strdup(""); }
+    | '[' Type ';' INT_LIT ']' { printf("INT_LIT %d\n", $4); $$.type = strdup("array"); $$.code = strdup(""); }
 ;
 
 Expression
@@ -260,104 +296,63 @@ Expression
 ;
 
 LogicalOrExpression
-    : LogicalOrExpression LOR LogicalAndExpression {
-        printf("LOR\n");
-        $$ = strdup("bool");
-    }
-    | LogicalAndExpression { $$ = $1; }
+    : LogicalOrExpression LOR LogicalAndExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | LogicalAndExpression { $$.type = $1.type; $$.code = $1.code; }
 ;
 
 LogicalAndExpression
-    : LogicalAndExpression LAND RelationalExpression {
-        printf("LAND\n");
-        $$ = strdup("bool");
-    }
-    | RelationalExpression { $$ = $1; }
+    : LogicalAndExpression LAND RelationalExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | RelationalExpression { $$.type = $1.type; $$.code = $1.code; }
 ;
 
 RelationalExpression
-    : RelationalExpression '>' AdditiveExpression {
-        if (strcmp($1, "undefined") == 0 || strcmp($3, "undefined") == 0) {
-            printf("error:%d: invalid operation: GTR (mismatched types %s and %s)\n", yylineno, $1, $3);
-        }
-        printf("GTR\n");
-        $$ = strdup("bool");
-    }
-    | RelationalExpression '<' AdditiveExpression {
-        printf("LSS\n");
-        $$ = strdup("bool");
-    }
-    | RelationalExpression GEQ AdditiveExpression {
-        printf("GEQ\n");
-        $$ = strdup("bool");
-    }
-    | RelationalExpression LEQ AdditiveExpression {
-        printf("LEQ\n");
-        $$ = strdup("bool");
-    }
-    | RelationalExpression EQL AdditiveExpression {
-        printf("EQL\n");
-        $$ = strdup("bool");
-    }
-    | RelationalExpression NEQ AdditiveExpression {
-        printf("NEQ\n");
-        $$ = strdup("bool");
-    }
-    | AdditiveExpression { $$ = $1; }
+    : RelationalExpression '>' AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | RelationalExpression '<' AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | RelationalExpression GEQ AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | RelationalExpression LEQ AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | RelationalExpression EQL AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | RelationalExpression NEQ AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | AdditiveExpression { $$.type = $1.type; $$.code = $1.code; }
 ;
 
 AdditiveExpression
     : AdditiveExpression '+' MultiplicativeExpression {
-        printf("ADD\n");
-        if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
-            $$ = strdup("f32");
-        } else {
-            $$ = strdup("i32");
-        }
+        char *type = (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) ? "f32" : "i32";
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 64);
+        sprintf(code, "%s%s    %sadd\n", $1.code, $3.code, strcmp(type, "f32") == 0 ? "f" : "i");
+        $$.type = strdup(type);
+        $$.code = code;
     }
     | AdditiveExpression '-' MultiplicativeExpression {
-        printf("SUB\n");
-        if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
-            $$ = strdup("f32");
-        } else {
-            $$ = strdup("i32");
-        }
+        char *type = (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) ? "f32" : "i32";
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 64);
+        sprintf(code, "%s%s    %ssub\n", $1.code, $3.code, strcmp(type, "f32") == 0 ? "f" : "i");
+        $$.type = strdup(type);
+        $$.code = code;
     }
     | MultiplicativeExpression { $$ = $1; }
 ;
 
 MultiplicativeExpression
     : MultiplicativeExpression '*' UnaryExpression {
-        printf("MUL\n");
-        if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
-            $$ = strdup("f32");
-        } else {
-            $$ = strdup("i32");
-        }
+        char *type = (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) ? "f32" : "i32";
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 64);
+        sprintf(code, "%s%s    %smul\n", $1.code, $3.code, strcmp(type, "f32") == 0 ? "f" : "i");
+        $$.type = strdup(type);
+        $$.code = code;
     }
     | MultiplicativeExpression '/' UnaryExpression {
-        printf("DIV\n");
-        if (strcmp($1, "f32") == 0 || strcmp($3, "f32") == 0) {
-            $$ = strdup("f32");
-        } else {
-            $$ = strdup("i32");
-        }
+        char *type = (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) ? "f32" : "i32";
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 64);
+        sprintf(code, "%s%s    %sdiv\n", $1.code, $3.code, strcmp(type, "f32") == 0 ? "f" : "i");
+        $$.type = strdup(type);
+        $$.code = code;
     }
     | MultiplicativeExpression '%' UnaryExpression {
-        printf("REM\n");
-        $$ = strdup("i32");
-    }
-    | MultiplicativeExpression LSHIFT UnaryExpression {
-        // Type checking for left shift
-        if (!(strcmp($1, "i32") == 0 && strcmp($3, "i32") == 0)) {
-            printf("error:%d: invalid operation: LSHIFT (mismatched types %s and %s)\n", yylineno, $1, $3);
-        }
-        printf("LSHIFT\n");
-        $$ = strdup("i32");
-    }
-    | MultiplicativeExpression RSHIFT UnaryExpression {
-        printf("RSHIFT\n");
-        $$ = strdup("i32");
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 64);
+        sprintf(code, "%s%s    irem\n", $1.code, $3.code);
+        $$.type = strdup("i32");
+        $$.code = code;
     }
     | UnaryExpression { $$ = $1; }
 ;
@@ -365,7 +360,8 @@ MultiplicativeExpression
 UnaryExpression
     : '!' UnaryExpression {
         printf("NOT\n");
-        $$ = strdup("bool");
+        $$.type = strdup("bool");
+        $$.code = strdup("");
     }
     | '-' UnaryExpression %prec NEG {
         printf("NEG\n");
@@ -376,56 +372,44 @@ UnaryExpression
 
 CastExpression
     : CastExpression AS Type {
-        if (strcmp($1, "i32") == 0 && strcmp($3, "f32") == 0) {
-            printf("i2f\n");
-            $$ = strdup("f32");
-        } else if (strcmp($1, "f32") == 0 && strcmp($3, "i32") == 0) {
-            printf("f2i\n");
-            $$ = strdup("i32");
+        if (strcmp($1.type, "i32") == 0 && strcmp($3.type, "f32") == 0) {
+            $$.type = strdup("f32"); $$.code = strdup("");
+        } else if (strcmp($1.type, "f32") == 0 && strcmp($3.type, "i32") == 0) {
+            $$.type = strdup("i32"); $$.code = strdup("");
         } else {
-            $$ = strdup($3);
+            $$.type = strdup($3.type); $$.code = strdup("");
         }
     }
-    | PrimaryExpression { $$ = $1; }
+    | PrimaryExpression { $$.type = $1.type; $$.code = $1.code; }
 ;
 
 PrimaryExpression
-    : INT_LIT {
-        printf("INT_LIT %d\n", $1);
-        $$ = strdup("i32");
-    }
-    | FLOAT_LIT {
-        printf("FLOAT_LIT %f\n", $1);
-        $$ = strdup("f32");
-    }
-    | '"' STRING_LIT '"' {
-        printf("STRING_LIT \"%s\"\n", $2);
-        $$ = strdup("str");
-    }
-    | '"' '"' {
-        printf("STRING_LIT \"\"\n");
-        $$ = strdup("str");
-    }
-    | TRUE {
-        printf("bool TRUE\n");
-        $$ = strdup("bool");
-    }
-    | FALSE {
-        printf("bool FALSE\n");
-        $$ = strdup("bool");
-    }
+    : INT_LIT { char buf[64]; sprintf(buf, "    ldc %d\n", $1); $$.type = strdup("i32"); $$.code = strdup(buf); }
+    | FLOAT_LIT { char buf[64]; sprintf(buf, "    ldc %f\n", $1); $$.type = strdup("f32"); $$.code = strdup(buf); }
+    | '"' STRING_LIT '"' { $$.type = strdup("str"); $$.code = strdup(""); }
+    | '"' '"' { $$.type = strdup("str"); $$.code = strdup(""); }
+    | TRUE { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | FALSE { $$.type = strdup("bool"); $$.code = strdup(""); }
     | ID {
-        $$ = lookup_symbol($1);
+        SymbolInfo info = lookup_symbol_info($1);
+        $$.type = strdup(info.type);
+        char buf[64];
+        if (strcmp(info.type, "i32") == 0) {
+            sprintf(buf, "    iload %d\n", info.addr);
+        } else if (strcmp(info.type, "f32") == 0) {
+            sprintf(buf, "    fload %d\n", info.addr);
+        } else {
+            sprintf(buf, "");
+        }
+        $$.code = strdup(buf);
     }
-    | ID { lookup_symbol($1); } '[' Expression ']' {
-        $$ = strdup("array");
+    | ID { lookup_symbol_info($1); } '[' Expression ']' {
+        $$.type = strdup("array"); $$.code = strdup("");
     }
     | '[' ArrayElements ']' {
-        $$ = strdup("array");
+        $$.type = strdup("array"); $$.code = strdup("");
     }
-    | '(' Expression ')' {
-        $$ = $2;
-    }
+    | '(' Expression ')' { $$.type = $2.type; $$.code = strdup($2.code); }
 ;
 
 ArrayElements
@@ -497,20 +481,24 @@ static void insert_symbol(char* name, char* type, char* func_sig, int mut) {
     symbol_count[current_scope]++;
 }
 
-static char* lookup_symbol(char* name) {
-    // Search from current scope to global scope
+static SymbolInfo lookup_symbol_info(char* name) {
     for (int i = scope_level - 1; i >= 0; i--) {
         Symbol* current = symbol_table[i];
         while (current) {
             if (strcmp(current->name, name) == 0) {
-                printf("IDENT (name=%s, address=%d)\n", name, current->addr);
-                return strdup(current->type);
+                SymbolInfo info;
+                info.type = current->type;
+                info.addr = current->addr;
+                return info;
             }
             current = current->next;
         }
     }
+    SymbolInfo info;
+    info.type = strdup("undefined");
+    info.addr = -1;
     printf("error:%d: undefined: %s\n", yylineno, name);
-    return strdup("undefined");
+    return info;
 }
 
 static void dump_symbol() {
