@@ -35,4 +35,4 @@ judge: all
 	@judge -v ${v}
 
 clean:
-	rm -f ${COMPILER} y.tab.* y.output lex.* ${EXEC}.class *.j
+	rm -rf ${COMPILER} y.tab.* y.output lex.* ${EXEC}.class *.j mycompiler.dSYM output
