@@ -231,6 +231,10 @@ Statement
             fprintf(jout, "%s    istore %d\n", $7.code, addr);
         } else if (strcmp($5.type, "f32") == 0) {
             fprintf(jout, "%s    fstore %d\n", $7.code, addr);
+        } else if (strcmp($5.type, "str") == 0) {
+            fprintf(jout, "%s    astore %d\n", $7.code, addr);
+        } else if (strcmp($5.type, "bool") == 0) {
+            fprintf(jout, "%s    istore %d\n", $7.code, addr);
         }
     }
     | LET MUT ID ':' Type ';' {
@@ -240,6 +244,10 @@ Statement
             fprintf(jout, "    ldc 0\n    istore %d\n", addr);
         } else if (strcmp($5.type, "f32") == 0) {
             fprintf(jout, "    ldc 0.0\n    fstore %d\n", addr);
+        } else if (strcmp($5.type, "str") == 0) {
+            fprintf(jout, "    ldc \"\"\n    astore %d\n", addr);
+        } else if (strcmp($5.type, "bool") == 0) {
+            fprintf(jout, "    ldc 0\n    istore %d\n", addr);
         }
     }
     | LET MUT ID '=' Expression ';' {
@@ -250,6 +258,10 @@ Statement
             fprintf(jout, "%s    istore %d\n", $5.code, addr);
         } else if (strcmp(type, "f32") == 0) {
             fprintf(jout, "%s    fstore %d\n", $5.code, addr);
+        } else if (strcmp(type, "str") == 0) {
+            fprintf(jout, "%s    astore %d\n", $5.code, addr);
+        } else if (strcmp(type, "bool") == 0) {
+            fprintf(jout, "%s    istore %d\n", $5.code, addr);
         }
     }
     | ID '=' Expression ';' {
@@ -260,25 +272,66 @@ Statement
                 fprintf(jout, "%s    istore %d\n", $3.code, addr);
             } else if (strcmp(type, "f32") == 0) {
                 fprintf(jout, "%s    fstore %d\n", $3.code, addr);
+            } else if (strcmp(type, "str") == 0) {
+                fprintf(jout, "%s    astore %d\n", $3.code, addr);
+            } else if (strcmp(type, "bool") == 0) {
+                fprintf(jout, "%s    istore %d\n", $3.code, addr);
             }
         }
         check_mutable($1);
     }
     | ID ADD_ASSIGN Expression ';' {
-        printf("ADD_ASSIGN\n");
         check_mutable($1);
+        if (variable_exists($1)) {
+            SymbolInfo info = lookup_symbol_info($1);
+            if (strcmp(info.type, "i32") == 0) {
+                fprintf(jout, "    iload %d\n%s    iadd\n    istore %d\n", info.addr, $3.code, info.addr);
+            } else if (strcmp(info.type, "f32") == 0) {
+                fprintf(jout, "    fload %d\n%s    fadd\n    fstore %d\n", info.addr, $3.code, info.addr);
+            }
+        }
     }
     | ID SUB_ASSIGN Expression ';' {
-        printf("SUB_ASSIGN\n");
+        check_mutable($1);
+        if (variable_exists($1)) {
+            SymbolInfo info = lookup_symbol_info($1);
+            if (strcmp(info.type, "i32") == 0) {
+                fprintf(jout, "    iload %d\n%s    isub\n    istore %d\n", info.addr, $3.code, info.addr);
+            } else if (strcmp(info.type, "f32") == 0) {
+                fprintf(jout, "    fload %d\n%s    fsub\n    fstore %d\n", info.addr, $3.code, info.addr);
+            }
+        }
     }
     | ID MUL_ASSIGN Expression ';' {
-        printf("MUL_ASSIGN\n");
+        check_mutable($1);
+        if (variable_exists($1)) {
+            SymbolInfo info = lookup_symbol_info($1);
+            if (strcmp(info.type, "i32") == 0) {
+                fprintf(jout, "    iload %d\n%s    imul\n    istore %d\n", info.addr, $3.code, info.addr);
+            } else if (strcmp(info.type, "f32") == 0) {
+                fprintf(jout, "    fload %d\n%s    fmul\n    fstore %d\n", info.addr, $3.code, info.addr);
+            }
+        }
     }
     | ID DIV_ASSIGN Expression ';' {
-        printf("DIV_ASSIGN\n");
+        check_mutable($1);
+        if (variable_exists($1)) {
+            SymbolInfo info = lookup_symbol_info($1);
+            if (strcmp(info.type, "i32") == 0) {
+                fprintf(jout, "    iload %d\n%s    idiv\n    istore %d\n", info.addr, $3.code, info.addr);
+            } else if (strcmp(info.type, "f32") == 0) {
+                fprintf(jout, "    fload %d\n%s    fdiv\n    fstore %d\n", info.addr, $3.code, info.addr);
+            }
+        }
     }
     | ID REM_ASSIGN Expression ';' {
-        printf("REM_ASSIGN\n");
+        check_mutable($1);
+        if (variable_exists($1)) {
+            SymbolInfo info = lookup_symbol_info($1);
+            if (strcmp(info.type, "i32") == 0) {
+                fprintf(jout, "    iload %d\n%s    irem\n    istore %d\n", info.addr, $3.code, info.addr);
+            }
+        }
     }
     | '{' { create_symbol(); } StatementList '}' { 
         dump_symbol(); 
@@ -504,7 +557,12 @@ PrimaryExpression
         $$.type = strdup("str"); 
         $$.code = strdup(buf); 
     }
-    | '"' '"' { $$.type = strdup("str"); $$.code = strdup(""); }
+    | '"' '"' { 
+        char buf[64]; 
+        sprintf(buf, "    ldc \"\"\n"); 
+        $$.type = strdup("str"); 
+        $$.code = strdup(buf); 
+    }
     | TRUE { $$.type = strdup("bool"); $$.code = strdup("    ldc 1\n"); }
     | FALSE { $$.type = strdup("bool"); $$.code = strdup("    ldc 0\n"); }
     | ID {
