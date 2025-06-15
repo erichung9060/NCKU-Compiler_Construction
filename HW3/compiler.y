@@ -51,6 +51,7 @@
     int scope_level = 0;
     int symbol_index = 0;
     int address_counter = 0;
+    int label_counter = 0;
 
     FILE *jout = NULL;
 %}
@@ -168,10 +169,20 @@ Statement
             fprintf(jout, "    invokevirtual java/io/PrintStream/println(I)V\n");
         } else if (strcmp($3.type, "f32") == 0) {
             fprintf(jout, "    invokevirtual java/io/PrintStream/println(F)V\n");
+        } else if (strcmp($3.type, "bool") == 0) {
+            fprintf(jout, "    invokevirtual java/io/PrintStream/println(Z)V\n");
         }
     }
     | PRINT '(' Expression ')' ';' {
-        printf("PRINT %s\n", $3);
+        fprintf(jout, "    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+        fprintf(jout, "%s", $3.code);
+        if (strcmp($3.type, "i32") == 0) {
+            fprintf(jout, "    invokevirtual java/io/PrintStream/print(I)V\n");
+        } else if (strcmp($3.type, "f32") == 0) {
+            fprintf(jout, "    invokevirtual java/io/PrintStream/print(F)V\n");
+        } else if (strcmp($3.type, "bool") == 0) {
+            fprintf(jout, "    invokevirtual java/io/PrintStream/print(Z)V\n");
+        }
     }
     | LET ID ':' Type '=' Expression ';' {
         insert_symbol($2, $4.type, "-", 0);
@@ -296,22 +307,104 @@ Expression
 ;
 
 LogicalOrExpression
-    : LogicalOrExpression LOR LogicalAndExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    : LogicalOrExpression LOR LogicalAndExpression { 
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        sprintf(code, "%s%s    ior\n", $1.code, $3.code);
+        $$.type = strdup("bool"); 
+        $$.code = code;
+    }
     | LogicalAndExpression { $$.type = $1.type; $$.code = $1.code; }
 ;
 
 LogicalAndExpression
-    : LogicalAndExpression LAND RelationalExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    : LogicalAndExpression LAND RelationalExpression { 
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        sprintf(code, "%s%s    iand\n", $1.code, $3.code);
+        $$.type = strdup("bool"); 
+        $$.code = code;
+    }
     | RelationalExpression { $$.type = $1.type; $$.code = $1.code; }
 ;
 
 RelationalExpression
-    : RelationalExpression '>' AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
-    | RelationalExpression '<' AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
-    | RelationalExpression GEQ AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
-    | RelationalExpression LEQ AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
-    | RelationalExpression EQL AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
-    | RelationalExpression NEQ AdditiveExpression { $$.type = strdup("bool"); $$.code = strdup(""); }
+    : RelationalExpression '>' AdditiveExpression { 
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        int label_id = label_counter++;
+        if (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) {
+            sprintf(code, "%s%s    fcmpg\n    ifgt L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        } else {
+            sprintf(code, "%s%s    if_icmpgt L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        }
+        $$.type = strdup("bool"); 
+        $$.code = code;
+    }
+    | RelationalExpression '<' AdditiveExpression { 
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        int label_id = label_counter++;
+        if (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) {
+            sprintf(code, "%s%s    fcmpl\n    iflt L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        } else {
+            sprintf(code, "%s%s    if_icmplt L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        }
+        $$.type = strdup("bool"); 
+        $$.code = code;
+    }
+    | RelationalExpression GEQ AdditiveExpression { 
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        int label_id = label_counter++;
+        if (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) {
+            sprintf(code, "%s%s    fcmpg\n    ifge L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        } else {
+            sprintf(code, "%s%s    if_icmpge L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        }
+        $$.type = strdup("bool"); 
+        $$.code = code;
+    }
+    | RelationalExpression LEQ AdditiveExpression { 
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        int label_id = label_counter++;
+        if (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) {
+            sprintf(code, "%s%s    fcmpl\n    ifle L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        } else {
+            sprintf(code, "%s%s    if_icmple L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        }
+        $$.type = strdup("bool"); 
+        $$.code = code;
+    }
+    | RelationalExpression EQL AdditiveExpression { 
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        int label_id = label_counter++;
+        if (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) {
+            sprintf(code, "%s%s    fcmpl\n    ifeq L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        } else {
+            sprintf(code, "%s%s    if_icmpeq L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        }
+        $$.type = strdup("bool"); 
+        $$.code = code;
+    }
+    | RelationalExpression NEQ AdditiveExpression { 
+        char *code = (char*)malloc(strlen($1.code) + strlen($3.code) + 128);
+        int label_id = label_counter++;
+        if (strcmp($1.type, "f32") == 0 || strcmp($3.type, "f32") == 0) {
+            sprintf(code, "%s%s    fcmpl\n    ifne L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        } else {
+            sprintf(code, "%s%s    if_icmpne L_true_%d\n    ldc 0\n    goto L_end_%d\nL_true_%d:\n    ldc 1\nL_end_%d:\n", 
+                    $1.code, $3.code, label_id, label_id, label_id, label_id);
+        }
+        $$.type = strdup("bool"); 
+        $$.code = code;
+    }
     | AdditiveExpression { $$.type = $1.type; $$.code = $1.code; }
 ;
 
@@ -359,13 +452,20 @@ MultiplicativeExpression
 
 UnaryExpression
     : '!' UnaryExpression {
-        printf("NOT\n");
+        char *code = (char*)malloc(strlen($2.code) + 64);
+        sprintf(code, "%s    ldc 1\n    ixor\n", $2.code);
         $$.type = strdup("bool");
-        $$.code = strdup("");
+        $$.code = code;
     }
     | '-' UnaryExpression %prec NEG {
-        printf("NEG\n");
-        $$ = $2;
+        char *code = (char*)malloc(strlen($2.code) + 64);
+        if (strcmp($2.type, "f32") == 0) {
+            sprintf(code, "%s    fneg\n", $2.code);
+        } else {
+            sprintf(code, "%s    ineg\n", $2.code);
+        }
+        $$.type = strdup($2.type);
+        $$.code = code;
     }
     | CastExpression { $$ = $1; }
 ;
@@ -388,8 +488,8 @@ PrimaryExpression
     | FLOAT_LIT { char buf[64]; sprintf(buf, "    ldc %f\n", $1); $$.type = strdup("f32"); $$.code = strdup(buf); }
     | '"' STRING_LIT '"' { $$.type = strdup("str"); $$.code = strdup(""); }
     | '"' '"' { $$.type = strdup("str"); $$.code = strdup(""); }
-    | TRUE { $$.type = strdup("bool"); $$.code = strdup(""); }
-    | FALSE { $$.type = strdup("bool"); $$.code = strdup(""); }
+    | TRUE { $$.type = strdup("bool"); $$.code = strdup("    ldc 1\n"); }
+    | FALSE { $$.type = strdup("bool"); $$.code = strdup("    ldc 0\n"); }
     | ID {
         SymbolInfo info = lookup_symbol_info($1);
         $$.type = strdup(info.type);
