@@ -49,6 +49,8 @@
     int scope_level = 0;
     int symbol_index = 0;
     int address_counter = 0;
+
+    FILE *jout = NULL;
 %}
 
 %error-verbose
@@ -147,8 +149,10 @@ StatementList
 
 Statement
     : PRINTLN '(' '"' STRING_LIT '"' ')' ';' {
-        printf("STRING_LIT \"%s\"\n", $4);
-        printf("PRINTLN str\n");
+        // Only handle println with string literal for now
+        fprintf(jout, "    getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+        fprintf(jout, "    ldc \"%s\" ;\n", $4);
+        fprintf(jout, "    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
     }
     | PRINTLN '(' Expression ')' ';' {
         printf("PRINTLN %s\n", $3);
@@ -440,11 +444,25 @@ int main(int argc, char *argv[])
         yyin = stdin;
     }
 
+    jout = fopen("hw3.j", "w");
+    // Emit Jasmin header for Main class and main method
+    fprintf(jout, ".source Main.j\n");
+    fprintf(jout, ".class public Main\n");
+    fprintf(jout, ".super java/lang/Object\n\n");
+    fprintf(jout, ".method public static main([Ljava/lang/String;)V\n");
+    fprintf(jout, ".limit stack 100\n");
+    fprintf(jout, ".limit locals 100\n");
+
     yylineno = 1;
     yyparse();
 
-	printf("Total lines: %d\n", yylineno - 1);
+    // Emit return and end method for main
+    fprintf(jout, "    return\n");
+    fprintf(jout, ".end method\n");
+
+    printf("Total lines: %d\n", yylineno - 1);
     fclose(yyin);
+    fclose(jout);
     return 0;
 }
 
