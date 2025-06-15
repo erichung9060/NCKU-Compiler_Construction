@@ -171,6 +171,8 @@ Statement
             fprintf(jout, "    invokevirtual java/io/PrintStream/println(F)V\n");
         } else if (strcmp($3.type, "bool") == 0) {
             fprintf(jout, "    invokevirtual java/io/PrintStream/println(Z)V\n");
+        } else if (strcmp($3.type, "str") == 0) {
+            fprintf(jout, "    invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
         }
     }
     | PRINT '(' Expression ')' ';' {
@@ -182,6 +184,8 @@ Statement
             fprintf(jout, "    invokevirtual java/io/PrintStream/print(F)V\n");
         } else if (strcmp($3.type, "bool") == 0) {
             fprintf(jout, "    invokevirtual java/io/PrintStream/print(Z)V\n");
+        } else if (strcmp($3.type, "str") == 0) {
+            fprintf(jout, "    invokevirtual java/io/PrintStream/print(Ljava/lang/String;)V\n");
         }
     }
     | LET ID ':' Type '=' Expression ';' {
@@ -191,6 +195,10 @@ Statement
             fprintf(jout, "%s    istore %d\n", $6.code, addr);
         } else if (strcmp($4.type, "f32") == 0) {
             fprintf(jout, "%s    fstore %d\n", $6.code, addr);
+        } else if (strcmp($4.type, "str") == 0) {
+            fprintf(jout, "%s    astore %d\n", $6.code, addr);
+        } else if (strcmp($4.type, "bool") == 0) {
+            fprintf(jout, "%s    istore %d\n", $6.code, addr);
         }
     }
     | LET ID ':' Type ';' {
@@ -210,6 +218,10 @@ Statement
             fprintf(jout, "%s    istore %d\n", $4.code, addr);
         } else if (strcmp(type, "f32") == 0) {
             fprintf(jout, "%s    fstore %d\n", $4.code, addr);
+        } else if (strcmp(type, "str") == 0) {
+            fprintf(jout, "%s    astore %d\n", $4.code, addr);
+        } else if (strcmp(type, "bool") == 0) {
+            fprintf(jout, "%s    istore %d\n", $4.code, addr);
         }
     }
     | LET MUT ID ':' Type '=' Expression ';' {
@@ -486,7 +498,12 @@ CastExpression
 PrimaryExpression
     : INT_LIT { char buf[64]; sprintf(buf, "    ldc %d\n", $1); $$.type = strdup("i32"); $$.code = strdup(buf); }
     | FLOAT_LIT { char buf[64]; sprintf(buf, "    ldc %f\n", $1); $$.type = strdup("f32"); $$.code = strdup(buf); }
-    | '"' STRING_LIT '"' { $$.type = strdup("str"); $$.code = strdup(""); }
+    | '"' STRING_LIT '"' { 
+        char buf[256]; 
+        sprintf(buf, "    ldc \"%s\"\n", $2); 
+        $$.type = strdup("str"); 
+        $$.code = strdup(buf); 
+    }
     | '"' '"' { $$.type = strdup("str"); $$.code = strdup(""); }
     | TRUE { $$.type = strdup("bool"); $$.code = strdup("    ldc 1\n"); }
     | FALSE { $$.type = strdup("bool"); $$.code = strdup("    ldc 0\n"); }
@@ -498,6 +515,10 @@ PrimaryExpression
             sprintf(buf, "    iload %d\n", info.addr);
         } else if (strcmp(info.type, "f32") == 0) {
             sprintf(buf, "    fload %d\n", info.addr);
+        } else if (strcmp(info.type, "str") == 0) {
+            sprintf(buf, "    aload %d\n", info.addr);
+        } else if (strcmp(info.type, "bool") == 0) {
+            sprintf(buf, "    iload %d\n", info.addr);
         } else {
             sprintf(buf, "");
         }
