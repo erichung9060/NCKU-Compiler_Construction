@@ -380,7 +380,23 @@ ElsePart
 ;
 
 WhileStatement
-    : WHILE Expression Block
+    : WHILE {
+        // Generate loop start label
+        int start_label = ++label_counter;
+        int end_label = ++label_counter;
+        if_label_stack[++if_label_top] = start_label;
+        if_label_stack[++if_label_top] = end_label;
+        fprintf(jout, "L%d:\n", start_label);
+    } Expression {
+        // Generate conditional jump - if false, exit loop
+        int end_label = if_label_stack[if_label_top];
+        fprintf(jout, "%s    ifeq L%d\n", $3.code, end_label);
+    } Block {
+        // Generate jump back to start and end label
+        int end_label = if_label_stack[if_label_top--];
+        int start_label = if_label_stack[if_label_top--];
+        fprintf(jout, "    goto L%d\nL%d:\n", start_label, end_label);
+    }
 ;
 
 Block
